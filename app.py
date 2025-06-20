@@ -69,19 +69,18 @@ def main():
         st.error("Error loading face detector. Please ensure OpenCV is installed correctly.")
         return
 
-    # Initialize video capture with dynamic index selection
-    cap = None
-    for index in range(3):  # Try indices 0, 1, 2
-        cap = cv2.VideoCapture(index, cv2.CAP_DSHOW)  # Use CAP_DSHOW for Windows
-        if cap.isOpened():
-            st.success(f"Webcam found at index {index}")
-            break
-    else:
-        st.error("Cannot access webcam. Tried indices 0-2. Please ensure webcam is connected, not in use by another app, and permissions are granted.")
-        st.write("Try: 1) Closing other apps using the webcam. 2) Checking browser/system permissions. 3) Testing with another webcam.")
+    # Camera selection dropdown
+    camera_options = [f"Camera {i}" for i in range(3)]  # Options for indices 0, 1, 2
+    selected_camera = st.selectbox("Select your camera", camera_options, index=0)
+    camera_index = camera_options.index(selected_camera)
 
-    # Set lower resolution to improve performance (optional)
-    if cap is not None:
+    # Initialize video capture with selected index
+    cap = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW)
+    if not cap.isOpened():
+        st.error(f"Cannot access {selected_camera}. Please ensure the webcam is connected, not in use by another app, and permissions are granted.")
+        st.write("Try: 1) Closing other apps using the webcam. 2) Checking browser/system permissions. 3) Selecting a different camera.")
+    else:
+        st.success(f"Webcam {selected_camera} is accessible.")
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
@@ -113,10 +112,10 @@ def main():
             status_placeholder.write("Camera stopped. Click 'Start/Stop Camera' to begin.")
             chart_placeholder.empty()
 
-    while st.session_state.is_running and cap is not None:
+    while st.session_state.is_running and cap is not None and cap.isOpened():
         ret, frame = cap.read()
         if not ret:
-            status_placeholder.error("Failed to capture video frame. Try restarting the camera.")
+            status_placeholder.error("Failed to capture video frame. Try restarting the camera or selecting a different camera.")
             st.session_state.is_running = False
             cap.release()
             break
