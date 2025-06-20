@@ -72,7 +72,7 @@ def main():
     # Initialize video capture with dynamic index selection
     cap = None
     for index in range(3):  # Try indices 0, 1, 2
-        cap = cv2.VideoCapture(index, cv2.CAP_DSHOW)  # Use CAP_DSHOW for Windows
+        cap = cv2.VideoCapture(index)
         if cap.isOpened():
             st.success(f"Webcam found at index {index}")
             break
