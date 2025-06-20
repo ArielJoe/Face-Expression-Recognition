@@ -1,5 +1,7 @@
 streamlit
-PIL
-numpy
-pickle
 opencv-python
+numpy
+scikit-image
+joblib
+matplotlib
+pillow
