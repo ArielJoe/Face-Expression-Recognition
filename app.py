@@ -83,8 +83,14 @@ def main():
         # Initialize video capture with selected index
         cap = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW)
         if not cap.isOpened():
-            st.error(f"Cannot access {selected_camera}. Please ensure the webcam is connected, not in use by another app, and permissions are granted.")
-            st.write("Try: 1) Closing other apps using the webcam. 2) Checking browser/system permissions. 3) Selecting a different camera.")
+            st.error(f"Cannot access {selected_camera}. This may be due to missing browser or system permissions.")
+            st.write("**Steps to Grant Permission:**")
+            st.write("1. Ensure no other app is using the webcam.")
+            st.write("2. In your browser (e.g., Chrome):")
+            st.write("   - Go to Settings > Privacy and Security > Site Settings > Camera.")
+            st.write("   - Allow camera access for this site (http://localhost:8501).")
+            st.write("3. Check system permissions (e.g., Windows: Settings > Privacy > Camera).")
+            st.write("4. Refresh the page and try a different camera index if needed.")
         else:
             st.success(f"Webcam {selected_camera} is accessible.")
             cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
@@ -123,7 +129,7 @@ def main():
     while not is_cloud and st.session_state.is_running and cap is not None and cap.isOpened():
         ret, frame = cap.read()
         if not ret:
-            status_placeholder.error("Failed to capture video frame. Try restarting the camera or selecting a different camera.")
+            status_placeholder.error("Failed to capture video frame. Try restarting the camera or checking permissions.")
             st.session_state.is_running = False
             cap.release()
             break
