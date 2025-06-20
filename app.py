@@ -6,6 +6,7 @@ import joblib
 import matplotlib.pyplot as plt
 import time
 from PIL import Image
+import os
 
 # Load the trained model
 @st.cache_resource
@@ -56,7 +57,7 @@ def predict_expression(model, img):
 # Streamlit app
 def main():
     st.title("Real-Time Facial Expression Detection")
-    st.write("This app uses your webcam or uploaded images to detect facial expressions in real-time.")
+    st.write("This app uses your webcam (locally) or uploaded images to detect facial expressions in real-time.")
 
     # Load model
     model = load_model()
@@ -69,27 +70,34 @@ def main():
         st.error("Error loading face detector. Please ensure OpenCV is installed correctly.")
         return
 
-    # Camera selection dropdown
-    camera_options = [f"Camera {i}" for i in range(3)]  # Options for indices 0, 1, 2
-    selected_camera = st.selectbox("Select your camera", camera_options, index=0)
-    camera_index = camera_options.index(selected_camera)
+    # Check if running on Streamlit Cloud (no webcam available)
+    is_cloud = os.getenv("STREAMLIT_CLOUD") == "true" or "streamlitcloud" in os.getenv("SERVER_SOFTWARE", "").lower()
 
-    # Initialize video capture with selected index
-    cap = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW)
-    if not cap.isOpened():
-        st.error(f"Cannot access {selected_camera}. Please ensure the webcam is connected, not in use by another app, and permissions are granted.")
-        st.write("Try: 1) Closing other apps using the webcam. 2) Checking browser/system permissions. 3) Selecting a different camera.")
+    # Camera selection dropdown (only for local use)
+    cap = None
+    if not is_cloud:
+        camera_options = [f"Camera {i}" for i in range(3)]  # Options for indices 0, 1, 2
+        selected_camera = st.selectbox("Select your camera", camera_options, index=0)
+        camera_index = camera_options.index(selected_camera)
+
+        # Initialize video capture with selected index
+        cap = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW)
+        if not cap.isOpened():
+            st.error(f"Cannot access {selected_camera}. Please ensure the webcam is connected, not in use by another app, and permissions are granted.")
+            st.write("Try: 1) Closing other apps using the webcam. 2) Checking browser/system permissions. 3) Selecting a different camera.")
+        else:
+            st.success(f"Webcam {selected_camera} is accessible.")
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
     else:
-        st.success(f"Webcam {selected_camera} is accessible.")
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        st.warning("Webcam access is not available on this hosted version. Please use the image upload option below.")
 
     # Create placeholders for video, chart, and status
     video_placeholder = st.empty()
     chart_placeholder = st.empty()
     status_placeholder = st.empty()
 
-    # File uploader for manual image upload
+    # File uploader for manual image upload (available locally and on cloud)
     uploaded_file = st.file_uploader("Upload an image", type=['png', 'jpg', 'jpeg'])
     if uploaded_file is not None:
         try:
@@ -101,18 +109,18 @@ def main():
         except Exception as e:
             st.error(f"Error processing uploaded image: {str(e)}")
 
-    # Toggle for running/stopping webcam
+    # Toggle for running/stopping webcam (only for local use)
     if 'is_running' not in st.session_state:
         st.session_state.is_running = False
 
-    if st.button("Start/Stop Camera"):
+    if not is_cloud and st.button("Start/Stop Camera"):
         st.session_state.is_running = not st.session_state.is_running
         if not st.session_state.is_running and cap is not None:
             cap.release()
             status_placeholder.write("Camera stopped. Click 'Start/Stop Camera' to begin.")
             chart_placeholder.empty()
 
-    while st.session_state.is_running and cap is not None and cap.isOpened():
+    while not is_cloud and st.session_state.is_running and cap is not None and cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             status_placeholder.error("Failed to capture video frame. Try restarting the camera or selecting a different camera.")
@@ -146,7 +154,7 @@ def main():
         time.sleep(0.03)
 
     # Ensure camera is released when stopped
-    if not st.session_state.is_running and cap is not None:
+    if not is_cloud and not st.session_state.is_running and cap is not None:
         cap.release()
         status_placeholder.write("Camera stopped. Click 'Start/Stop Camera' to begin.")
         chart_placeholder.empty()
